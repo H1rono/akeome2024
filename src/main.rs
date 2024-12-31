@@ -21,10 +21,13 @@ async fn main() -> anyhow::Result<()> {
             tokio::spawn(fut)
         })
         .collect();
+    let merge = lib::task::merge_pull_request(rx, &input.github_pat, &input.merging_pr);
+    let merge = tokio::spawn(merge);
     let () = sleep.await??;
     let () = log.await??;
     for send_message in send_messages {
         send_message.await??;
     }
+    let () = merge.await??;
     Ok(())
 }

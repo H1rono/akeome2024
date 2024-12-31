@@ -68,3 +68,40 @@ pub fn send_traq_message(
         Ok(())
     }
 }
+
+#[instrument(skip_all)]
+pub fn merge_pull_request(
+    mut rx: watch::Receiver<()>,
+    pat: &str,
+    pull_request: &super::PullRequest,
+) -> impl Future<Output = anyhow::Result<()>> + Send + 'static {
+    let _ = rx.borrow_and_update();
+    let super::PullRequest {
+        owner,
+        repository,
+        number,
+    } = pull_request;
+    let client = reqwest::Client::new();
+    let url = format!("https://api.github.com/repos/{owner}/{repository}/pulls/{number}/merge");
+    let req = client
+        .put(url)
+        .bearer_auth(pat)
+        .header(reqwest::header::ACCEPT, "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .json(&serde_json::json!({
+            "merge_method": "merge",
+            "commit_message": "あけましておめでとうございます :tada:"
+        }));
+    async move {
+        let () = rx.changed().await.context("failed to receive")?;
+        let res = req
+            .send()
+            .await
+            .context("failed to send")?
+            .error_for_status()
+            .context("received error response")?;
+        tracing::info!(status = %res.status(), "merged pr");
+        Ok(())
+    }
+}
