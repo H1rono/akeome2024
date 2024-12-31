@@ -69,6 +69,7 @@ pub fn send_traq_message(
     }
 }
 
+// FIXME: 403で失敗した。トークンの設定が良くなかった？
 #[instrument(skip_all)]
 pub fn merge_pull_request(
     mut rx: watch::Receiver<()>,
