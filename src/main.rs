@@ -10,12 +10,10 @@ async fn main() -> anyhow::Result<()> {
     let input = lib::Input::read_from_file("tmp/input.json")?;
     tracing::info!(?input, "successfully read input");
 
-    let due = lib::akeome_at();
-    tracing::info!(%due, "Hello, world!");
-    let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
-    loop {
-        interval.tick().await;
-        let duration_until_due = lib::duration_until(due);
-        tracing::info!(%duration_until_due, "tick");
-    }
+    let due = input.due();
+    let (sleep, rx) = lib::task::notify_on(due);
+    let task = tokio::spawn(lib::task::log(rx.clone()));
+    let () = sleep.await??;
+    let () = task.await??;
+    Ok(())
 }
