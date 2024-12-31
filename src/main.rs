@@ -12,8 +12,19 @@ async fn main() -> anyhow::Result<()> {
 
     let due = input.due();
     let (sleep, rx) = lib::task::notify_on(due);
-    let task = tokio::spawn(lib::task::log(rx.clone()));
+    let log = tokio::spawn(lib::task::log(rx.clone()));
+    let send_messages: Vec<_> = input
+        .traq_messages
+        .iter()
+        .map(|m| {
+            let fut = lib::task::send_traq_message(rx.clone(), &input.traq_pat, m);
+            tokio::spawn(fut)
+        })
+        .collect();
     let () = sleep.await??;
-    let () = task.await??;
+    let () = log.await??;
+    for send_message in send_messages {
+        send_message.await??;
+    }
     Ok(())
 }

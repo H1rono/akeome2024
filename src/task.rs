@@ -37,3 +37,34 @@ pub fn log(
         Ok(())
     }
 }
+
+#[instrument(skip_all)]
+pub fn send_traq_message(
+    mut rx: watch::Receiver<()>,
+    pat: &str,
+    message: &super::Message,
+) -> impl Future<Output = anyhow::Result<()>> + Send + 'static {
+    let _ = rx.borrow_and_update();
+    let super::Message { channel, content } = message;
+    let client = reqwest::Client::new();
+    let url = format!("https://q.trap.jp/api/v3/channels/{channel}/messages");
+    let req = client
+        .post(url)
+        .bearer_auth(pat)
+        .header(reqwest::header::CONTENT_TYPE, "application/json")
+        .json(&serde_json::json!({
+            "content": content.to_string(),
+            "embed": true
+        }));
+    async move {
+        let () = rx.changed().await.context("failed to receive")?;
+        let res = req
+            .send()
+            .await
+            .context("failed to send")?
+            .error_for_status()
+            .context("received error response")?;
+        tracing::info!(status = %res.status(), "sent message");
+        Ok(())
+    }
+}
