@@ -24,9 +24,19 @@ pub fn duration_until<Tz: TimeZone>(timestamp: DateTime<Tz>) -> Duration {
 
 #[derive(Debug, Clone, PartialEq, Hash, Deserialize, Serialize)]
 pub struct Input {
+    #[serde(rename = "due")]
+    _due: Option<UtcTimestamp>,
     pub github_pat: String,
+    pub merging_pr: PullRequest,
     pub traq_pat: String,
     pub traq_messages: Vec<Message>,
+}
+
+#[derive(Debug, Clone, PartialEq, Hash, Deserialize, Serialize)]
+pub struct PullRequest {
+    pub owner: String,
+    pub repository: String,
+    pub number: u32,
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Deserialize, Serialize)]
@@ -48,5 +58,11 @@ impl Input {
     pub fn read_from_file(path: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
         let file = std::fs::File::open(path)?;
         Self::read_from(file)
+    }
+
+    pub fn due(&self) -> Timestamp {
+        self._due
+            .map(|d| d.with_timezone(&TIMEZONE))
+            .unwrap_or_else(akeome_at)
     }
 }
