@@ -7,6 +7,9 @@ async fn main() -> anyhow::Result<()> {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into());
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
+    let input = lib::Input::read_from_file("tmp/input.json")?;
+    tracing::info!(?input, "successfully read input");
+
     let due = lib::akeome_at();
     tracing::info!(%due, "Hello, world!");
     let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));

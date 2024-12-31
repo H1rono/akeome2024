@@ -1,5 +1,7 @@
+use anyhow::Context;
 use chrono::{DateTime, TimeZone, Utc};
 use chrono_tz::Tz;
+use serde::{Deserialize, Serialize};
 
 pub const TIMEZONE: Tz = chrono_tz::Asia::Tokyo;
 pub type Timestamp = DateTime<Tz>;
@@ -18,4 +20,33 @@ pub fn duration_until<Tz: TimeZone>(timestamp: DateTime<Tz>) -> Duration {
     let timestamp = timestamp.with_timezone(&TIMEZONE);
     let now = now();
     timestamp - now
+}
+
+#[derive(Debug, Clone, PartialEq, Hash, Deserialize, Serialize)]
+pub struct Input {
+    pub github_pat: String,
+    pub traq_pat: String,
+    pub traq_messages: Vec<Message>,
+}
+
+#[derive(Debug, Clone, PartialEq, Hash, Deserialize, Serialize)]
+pub struct Message {
+    // FIXME: UUID
+    pub channel: String,
+    pub content: String,
+}
+
+impl Input {
+    pub fn read_from<F: std::io::Read>(mut file: F) -> anyhow::Result<Self> {
+        let mut buf = vec![];
+        file.read_to_end(&mut buf)
+            .context("failed to read input content")?;
+        let slf: Self = serde_json::from_slice(&buf).context("failed to parse input content")?;
+        Ok(slf)
+    }
+
+    pub fn read_from_file(path: impl AsRef<std::path::Path>) -> anyhow::Result<Self> {
+        let file = std::fs::File::open(path)?;
+        Self::read_from(file)
+    }
 }
